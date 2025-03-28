@@ -1,0 +1,17 @@
+<launch>
+    <node pkg="publish_stereo_camera" type="publish_usb_stereo_camera" name="camera" output="screen">
+        <!-- 相机设备参数 -->
+        <param name="video_device" type="string" value="/dev/video0" />
+        
+        <!-- 图像参数 -->
+        <param name="frame_width" type="int" value="1280" />
+        <param name="frame_height" type="int" value="720" />
+        <param name="fps" type="int" value="30" />
+        <param name="publish_gray" type="bool" value="false" />
+        
+        <!-- 发布话题配置 -->
+        <param name="left_topic" type="string" value="/camera/raw/image_left" />
+        <param name="right_topic" type="string" value="/camera/raw/image_right" />
+        
+    </node>
+</launch>

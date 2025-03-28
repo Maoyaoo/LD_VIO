@@ -1,0 +1,9 @@
+<launch>
+    <node pkg="publish_imu" type="publish_imu_jy901b_node3" name="publish_imu_jy901b_node3" output="screen">
+        <param name="port_name" type="string" value="/dev/ttyUSB0" />
+        <param name="frame_id" type="string" value="imu_link" />
+    </node>
+     <!-- load rviz -->
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find publish_imu)/rviz/wit_ros_imu.rviz">
+    </node>
+</launch>

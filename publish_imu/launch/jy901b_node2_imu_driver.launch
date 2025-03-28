@@ -1,0 +1,26 @@
+<launch>
+    <!-- IMU驱动节点 -->
+    <node pkg="publish_imu" type="publish_imu_jy901b_node2" name="publish_imu_jy901b_node2" output="screen">
+        <!-- 串口参数配置 -->
+        <param name="port" type="string" value="/dev/ttyUSB0" />
+        <param name="baud" type="int" value="115200" />
+        
+        <!-- 坐标系设置 -->
+        <param name="frame_id" type="string" value="imu_link" />
+        
+        <!-- 发布话题配置 -->
+        <remap from="/wit/imu" to="/imu/data_raw" />
+        <remap from="/wit/mag" to="/imu/mag" />
+        
+        <!-- 是否发布磁力计数据 -->
+        <param name="enable_mag" type="bool" value="true" />
+    </node>
+
+    <!-- 可选的静态TF变换（示例） -->
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_imu"
+          args="0 0 0 0 0 0 base_link imu_link 100" />
+
+     <!-- load rviz -->
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find publish_imu)/rviz/wit_ros_imu.rviz">
+    </node>
+</launch>

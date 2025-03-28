@@ -1,64 +1,99 @@
 #include <ros/ros.h>
-#include "iostream"
 #include <image_transport/image_transport.h>
 #include <opencv2/opencv.hpp>
 #include <cv_bridge/cv_bridge.h>
-#include <algorithm>
-#include <fstream>
-#include <iomanip>
-#include <chrono>
-#include "camera_info_manager/camera_info_manager.h"
+
 
 int main(int argc, char **argv)
 {
-  std::cout << "程序启动..." << std::endl;
-  ros::init(argc, argv, "image_publisher");
-  ros::NodeHandle nh;
-  image_transport::ImageTransport it(nh);
-  image_transport::Publisher pub_L = it.advertise("camera/left/image_raw", 1);
-  image_transport::Publisher pub_R = it.advertise("camera/right/image_raw", 1);
-  cv::Mat imLeft, imRight, imLeftRect, imRightRect;
+  ros::init(argc, argv, "usb_camera_node");
+  ros::NodeHandle nh("~"); // 使用私有命名空间获取参数
 
-  
-  // cv::VideoCapture cap(0,cv::CAP_V4L2);
-  cv::VideoCapture cap("rtsp://192.168.1.21:555/live");
+  // 从参数服务器获取参数
+  std::string video_device;
+  int frame_width, frame_height, fps;
+  std::string left_topic, right_topic;
+  bool publish_gray;
+
+  nh.param<std::string>("video_device", video_device, "/dev/video0");
+  nh.param<int>("frame_width", frame_width, 640);
+  nh.param<int>("frame_height", frame_height, 480);
+  nh.param<int>("fps", fps, 30);
+  nh.param<std::string>("left_topic", left_topic, "/camera/left/image_raw");
+  nh.param<std::string>("right_topic", right_topic, "/camera/right/image_raw");
+  nh.param<bool>("publish_gray", publish_gray, false);
+
+  // 初始化相机
+  cv::VideoCapture cap(0, cv::CAP_V4L2);
   if (!cap.isOpened())
   {
-    std::cout << "无法打开相机！" << std::endl;
+    ROS_ERROR("Failed to open camera device: %s", video_device.c_str());
     return -1;
   }
-  std::cout << "USB双目相机初始化与启动.." << std::endl;
-  double fps = cap.get(cv::CAP_PROP_FPS);
-  int width = cap.get(cv::CAP_PROP_FRAME_WIDTH); // 分辨率;
-  int height = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
 
-  // cap.set(cv::CAP_PROP_FRAME_WIDTH, width); // 分辨率
-  // cap.set(cv::CAP_PROP_FRAME_HEIGHT, height);
-  // cap.set(cv::CAP_PROP_FPS, fps); // 帧率
+  // 设置相机参数
+  cap.set(cv::CAP_PROP_FRAME_WIDTH, frame_width * 2); // 双目相机是拼接的
+  cap.set(cv::CAP_PROP_FRAME_HEIGHT, frame_height);
+  // cap.set(cv::CAP_PROP_FPS, fps);
 
-  cv::Mat stereo_img;
-  std::cout << "开始发布图像数据..." << std::endl;
-  std::cout << "相机分辨率:" << width * 0.5 << "*" << height << std::endl;
-  std::cout << "相机帧率:" << fps << "fps" << std::endl;
+  ROS_INFO("USB stereo camera initialized successfully");
+  ROS_INFO("Device: %s", video_device.c_str());
+  ROS_INFO("Resolution: %dx%d", frame_width, frame_height);
+  ROS_INFO("Frame rate: %d fps", (int)cap.get(cv::CAP_PROP_FPS));
 
-  while (nh.ok())
+  // 初始化图像发布
+  // image_transport::ImageTransport it(nh);
+  // image_transport::Publisher pub_left = it.advertise(left_topic, 1);
+  // image_transport::Publisher pub_right = it.advertise(right_topic, 1);
+
+  // 替换 image_transport 代码：
+ros::Publisher pub_left = nh.advertise<sensor_msgs::Image>(left_topic, 1);
+ros::Publisher pub_right = nh.advertise<sensor_msgs::Image>(right_topic, 1);
+
+  cv::Mat stereo_img, imLeft, imRight;
+  // ros::Rate loop_rate(fps);
+
+  while (ros::ok())
   {
-    cap >> stereo_img; // 获取当前帧图像
-    imLeft = stereo_img.colRange(0, width / 2).clone();
-    imRight = stereo_img.colRange(width / 2, width).clone();
-    cv::cvtColor(imLeft, imLeft, cv::COLOR_BGR2GRAY);
-    cv::cvtColor(imRight, imRight, cv::COLOR_BGR2GRAY);
-
-    sensor_msgs::ImagePtr msg_L = cv_bridge::CvImage(std_msgs::Header(), "mono8", imLeft).toImageMsg();
-    sensor_msgs::ImagePtr msg_R = cv_bridge::CvImage(std_msgs::Header(), "mono8", imRight).toImageMsg();
-
-    ros::Rate loop_rate(240);
-    pub_L.publish(msg_L);
-    pub_R.publish(msg_R);
-    loop_rate.sleep();
-    if (cv::waitKey(20) == 'q' || cv::waitKey(20) == 'Q')
+    cap >> stereo_img;
+    if (stereo_img.empty())
     {
-      break;
+      ROS_WARN("Received empty frame, camera may be disconnected");
+      continue;
     }
+
+    // 分割左右图像
+    imLeft = stereo_img.colRange(0, frame_width).clone();
+    imRight = stereo_img.colRange(frame_width, stereo_img.cols).clone();
+
+    if (publish_gray)
+    {
+      cv::cvtColor(imLeft, imLeft, cv::COLOR_BGR2GRAY);
+      cv::cvtColor(imRight, imRight, cv::COLOR_BGR2GRAY);
+    }
+
+    // 发布图像
+    auto msg_left = cv_bridge::CvImage(
+                        std_msgs::Header(),
+                        publish_gray ? "mono8" : "bgr8",
+                        imLeft)
+                        .toImageMsg();
+
+    auto msg_right = cv_bridge::CvImage(
+                         std_msgs::Header(),
+                         publish_gray ? "mono8" : "bgr8",
+                         imRight)
+                         .toImageMsg();
+
+    msg_left->header.stamp = ros::Time::now();
+    msg_right->header.stamp = msg_left->header.stamp;
+
+    pub_left.publish(msg_left);
+    pub_right.publish(msg_right);
+
+    // loop_rate.sleep();
   }
+
+  cap.release();
+  return 0;
 }

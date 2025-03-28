@@ -1,0 +1,24 @@
+
+<!-- open imu and rviz -->
+<launch>
+
+    <!-- imu type, default normal -->
+    <arg name="type" default="normal" doc="type [normal, modbus]"/>
+
+    <!-- imu python -->
+    <node pkg="publish_imu" type="wit_$(arg type)_ros.py" name="imu" output="screen">
+        <param name="port"               type = "str"    value="/dev/ttyUSB0"/>
+        <param name="baud"               type = "int"    value="115200"/>
+          
+        <!-- 发布话题配置 -->
+        <remap from="/wit/imu" to="/imu/data_raw" />
+        <remap from="/wit/mag" to="/imu/mag" />
+    </node>
+
+    
+
+    <!-- load rviz -->
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find publish_imu)/rviz/wit_ros_imu.rviz">
+    </node>
+
+</launch>   
