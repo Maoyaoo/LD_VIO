@@ -154,11 +154,6 @@ target_link_libraries(publish_usb_stereo_camera
 )
 
 
-add_executable(publish_usb_stereo_camera2 ./src/publish_usb_stereo_camera2.cpp)
-target_link_libraries(publish_usb_stereo_camera2
-  ${catkin_LIBRARIES}
-  ${OpenCV_LIBS}
-)
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use

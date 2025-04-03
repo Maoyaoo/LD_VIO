@@ -4,6 +4,10 @@
         <param name="video_device" type="string" value="/dev/video0" />
         
         <!-- 图像参数 -->
+        <!-- <param name="frame_width" type="int" value="1280" />
+        <param name="frame_height" type="int" value="720" /> -->
+        <param name="out_width" type="int" value="640" />
+        <param name="out_height" type="int" value="480" />
         <param name="frame_width" type="int" value="1280" />
         <param name="frame_height" type="int" value="720" />
         <param name="fps" type="int" value="30" />
