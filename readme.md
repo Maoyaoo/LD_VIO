@@ -7,6 +7,11 @@ sudo apt install ros-$ROS_DISTRO-rviz-imu-plugin
 
 ```
 
+# 编译
+```
+catkin_make --cmake-args -DCMAKE_BUILD_TYPE=Release
+```
+
 # imu设备绑定
 ```
 sudo bash bind_usb.sh
